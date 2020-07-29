@@ -1,0 +1,222 @@
+Programa RPG que llama a un servicio SOAP
+Call('aS402WS', &locacion, &ProcesoId, &Valor,  &Resultado)
+Debe ser compilado como llamador de servicios en el as para que funcione.
+
+
+        *************** Principio de datos ****************************************************
+0001.00  *  Este es un proceso realiza la llamada al servicio AS400ws                   170331 
+0002.00  *  hecho con genexus en la kb OssegWebServer                                   170331 
+0003.00  *                                                                              000000 
+0004.00  *  Gracias Profe / Ruly                                                        170331 
+0005.00  *                                                                              000000 
+0006.00  *  To Compile (requires V5R1):                                                 000000 
+0007.00  *     CRTWSPRG PGM(AS402WS) LIB(TZUSUAPGM)                                     190426 
+0008.00  *                                                                              000000 
+0009.00  *  To Run:                                                                     000000 
+0010.00  *     CALL wspru1 PARM('entrada' 'salida' '')                                  170331 
+0011.00  *                                                                              170222 
+0012.00  *                                                                              170222 
+0013.00  * &WSIItmNan[] = Vector con nombre campos a enviar                             090917 
+0014.00  * &WSIItmVal[] = Vector con valor campos a enviar                              090917 
+0015.00  *                                                                              090917 
+0016.00  * &WSOItmNan[] = Vector con nombre campos recibidos                            090917 
+0017.00  * &WSOItmVal[] = Vector con valor campos recibidos                             090917 
+0018.00  *                                                                              000000 
+0019.00 H DFTACTGRP(*NO) BNDDIR('HTTPAPI':'QC2LE')                                      000000 
+0020.00                                                                                 000000 
+0021.00 D AS400WS         PR                   ExtPgm('AS402WS')                        190423 
+0022.00 D   LOCACION                  1024A                                             170331 
+0023.00 D   ID                         100A   const                                     170331 
+0024.00 D   DATOS                      100A   const                                     170608 
+0025.00 D   NSEXO                       99A                                             170331 
+0026.00 D AS400WS         PI                                                            170331 
+0027.00 D   LOCACION                  1024A                                             170331 
+0028.00 D   ID                         100A   const                                     170331 
+0029.00 D   DATOS                      100A   const                                     170608 
+0030.00 D   NSEXO                       99A                                             170331
+0031.00  /copy httpapi_h                                                                000000
+0032.00                                                                                 000000
+0033.00  * define estructura de parametros para parser xml                              090917
+0034.00 D pparms          DS                                                            090917
+0035.00 D   pr_name                   1024a                                             090917
+0036.00 D   pr_path                   1024a                                             090917
+0037.00 D   pr_value                  1024a                                             090917
+0038.00                                                                                 090917
+0039.00 D Incoming        PR                                                            000000
+0040.00 D   x_parms                       *   value                                     090918
+0041.00 D   depth                       10I 0 value                                     000000
+0042.00 D   name                      1024A   varying const                             000000
+0043.00 D   path                     24576A   varying const                             000000
+0044.00 D   value                    65535A   varying const                             000000
+0045.00 D   attrs                         *   dim(32767)                                000000
+0046.00 D                                     const options(*varsize)                   000000
+0047.00 D Add_SOAPACTION  PR                                                            000000
+0048.00 D   Header                    1024A   varying                                   000000
+0049.00 D   UserData                      *   value                                     000000
+0050.00                                                                                 000000
+0051.00 D SOAP            s          32767A   varying                                   000000
+0052.00 D LOCATION        s           1024A   varying                                   090911
+0053.00 D rc              s             10I 0                                           000000
+0054.00 D err             s             10I 0                                           090915
+0055.00 D pname           s             99A                                             170331
+0056.00 D Result          s             12P 2                                           000000
+0057.00                                                                                 090915
+0058.00 D CRLF            C                   CONST(x'0d25')                            090916
+0059.00                                                                                 090916
+0060.00 D basic           S              1N                                             090915
+0061.00 D digest          S              1N                                             090915
+0062.00 D realm           S            124A                                             090915
+0063.00 D userid          S             50A                                             090915
+0064.00 D pass            S             50A                                             090915
+0065.00                                                                                 090918
+0066.00  /free                                                                          090916
+0067.00   SOAP =                                                                        090916
+0068.00    '<soapenv:Envelope ' + CRLF                                                  090916
+0069.00   +' xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" '                090916
+0070.00   +' xmlns:oss="OssegWebServer"> '  + CRLF                                      170120
+0071.00   +'<soapenv:Body> '   + CRLF                                                   090916
+0072.00   +'  <oss:AS400WS.Execute> '  + CRLF                                           170331
+0073.00   +'      <oss:Idproceso> '+ %trim(ID)   +'</oss:Idproceso> ' + CRLF            170608
+0074.00   +'      <oss:Xmlentrada> '+ %trim(DATOS) +'</oss:Xmlentrada> ' + CRLF         170608
+0075.00   +'  </oss:AS400WS.Execute> ' + CRLF                                           170331
+0076.00   +'</soapenv:Body> '  + CRLF                                                   090916
+0077.00   +'</soapenv:Envelope> ' + CRLF ;                                              090916
+0078.00                                                                                 000000
+0079.00   http_debug(*ON);                                                              000000
+0080.00                                                                                 000000
+0081.00   //  This tells HTTPAPI to call our subprocedure (in this example,             000000
+0082.00   //  the subprocedure is name ADD_SOAPACTION) when assembling the              000000
+0083.00   //  HTTP headers to send to the remote server.                                000000
+0084.00                                                                                 000000
+0085.00   http_xproc( HTTP_POINT_ADDL_HEADER                                            170120
+0086.00             : %paddr(Add_SOAPACTION) );                                         170120
+0087.00                                                                                 170117
+0088.00   userid = '' ;                                                                 170117
+0089.00   pass = ''  ;                                                                  170117
+0090.00                                                                                 090915
+0091.00   LOCATION = %trim(LOCACION);                                                   170331
+0092.00                                                                                 090911
+0093.00   rc = http_url_post_xml(                                                       090916
+0094.00              LOCATION                                                           090916
+0095.00                     : %addr(SOAP) + 2                                           090916
+0096.00                     : %len(SOAP)                                                090916
+0097.00                     : *NULL                                                     090916
+0098.00                     : %paddr(Incoming)                                          090916
+0099.00                     : %addr(pparms)                                             090917
+0100.00                     : HTTP_TIMEOUT                                              090916 
+0101.00                     : HTTP_USERAGENT                                            090916 
+0102.00                     : 'text/xml' );                                             090916 
+0103.00                                                                                 170119 
+0104.00   //        dsply '** variable rc: resultado del post **';                      170222 
+0105.00   //        dsply rc ;                                                          170222 
+0106.00   //        dsply '*************************************';                      170222 
+0107.00                                                                                 000000 
+0108.00   if (rc <> 1);                                                                 000000 
+0109.00        callp     http_error(err) ;                                              090915
+0110.00        if (err <> HTTP_NDAUTH) ;                                                090915
+0111.00             dsply 'Error de Conexion';                                          190426
+0112.00             NSEXO = 'Error Conexion' ;                                          170117
+0113.00   //       http_crash();                                                        190423
+0114.00        else  ;                                                                  090915
+0115.00              eval rc = http_getauth(basic: digest: realm) ;                     090915
+0116.00              if (Digest) ;                                                      090915
+0117.00                  callp     http_setauth(HTTP_AUTH_MD5_DIGEST:                   090915
+0118.00                                     userid: pass) ;                             090915
+0119.00              else  ;                                                            090915
+0120.00                  callp     http_setauth(HTTP_AUTH_BASIC:                        090915
+0121.00                                     userid: pass) ;                             090915
+0122.00              endif;                                                             090915
+0123.00              rc = http_url_post_xml(                                            090915
+0124.00                   LOCATION                                                      090915
+0125.00                     : %addr(SOAP) + 2                                           090916
+0126.00                     : %len(SOAP)                                                090915
+0127.00                     : *NULL                                                     090915
+0128.00                     : %paddr(Incoming)                                          090915
+0129.00                     : %addr(pparms)                                             090918
+0130.00                     : HTTP_TIMEOUT                                              090915
+0131.00                     : HTTP_USERAGENT                                            090915
+0132.00                     : 'text/xml' );                                             090915
+0133.00              if (rc <> 1);                                                      090915
+0134.00                  callp     http_error(err) ;                                    090915
+0135.00                   NSEXO = 'Error Conexion' ;                                    170116
+0136.00                   dsply 'Error de Conexion';                                    190426
+0137.00              //  http_crash();                                                  190426
+0138.00              else  ;                                                            090915
+0139.00                  pname = pr_value ;                                             090918
+0140.00                  NSEXO = pname ;                                                170120
+0141.00                  http_comp(%trim(ID) + ' ' + %trim(pname));                     170116
+0142.00              endif;                                                             090915
+0143.00        endif;                                                                   090915
+0144.00   else;                                                                         000000
+0145.00      pname = pr_value ;                                                         090918
+0146.00      NSEXO = pname ;                                                            170120
+0147.00   endif;                                                                        000000
+0148.00                                                                                 000000
+0149.00   *inlr = *on;                                                                  000000
+0150.00                                                                                 000000
+0151.00  /end-free                                                                      000000
+0152.00                                                                                 000000
+0153.00                                                                                 090915
+0154.00 P Incoming        B                                                             000000
+0155.00 D Incoming        PI                                                            000000
+0156.00 D   xparms                        *   value                                     090917
+0157.00 D   depth                       10I 0 value                                     000000
+0158.00 D   name                      1024A   varying const                             000000
+0159.00 D   path                     24576A   varying const                             000000
+0160.00 D   value                    65535A   varying const                             000000
+0161.00 D   attrs                         *   dim(32767)                                000000
+0162.00 D                                     const options(*varsize)                   000000
+0163.00                                                                                 000000
+0164.00  * define estructura de parametros para parser xml                              090917
+0165.00 D pparms          DS                  based(xparms)                             090917
+0166.00 D   pr_name                   1024a                                             090917
+0167.00 D   pr_path                   1024a                                             090917
+0168.00 D   pr_value                  1024a                                             090917
+0169.00                                                                                 090917
+0170.00  /free                                                                          000000
+0171.00      if (name = 'Resultadoxml');                                                170403
+0172.00         pr_name = %trim(name) ;                                                 170120
+0173.00         pr_path = %trim(path) ;                                                 090917
+0174.00         pr_value = %trim(value) ;                                               090917
+0175.00      endif;                                                                     000000
+0176.00      if (name = 'Edad');                                                        170120
+0177.00      // pr_edad = %trim(value) ;                                                170222
+0178.00      endif;                                                                     170120
+0179.00  /end-free                                                                      000000
+0180.00 P                 E                                                             000000
+0181.00                                                                                 000000
+0182.00  *+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++                 000000
+0183.00  * HTTPAPI will call this (because we set it with http_xproc)                   000000
+0184.00  * just before sending the HTTP headers to the remote server.                   000000
+0185.00  * This procedure lets us add any header we like to the                         000000
+0186.00  * HTTP request.                                                                000000
+0187.00  *                                                                              000000
+0188.00  * In this example, I'll use it to supply the SoapAction:                       000000
+0189.00  * header.  This way, I can supply a SOAPAction that's up to                    000000
+0190.00  * 1024 characters long.                                                        000000
+0191.00  *                                                                              000000
+0192.00  * NOTE: Make sure you leave off the SOAPAction header on the                   000000
+0193.00  *       HTTP_url_post_xml, above, otherwise you'll send two                    000000
+0194.00  *       of them!                                                               000000
+0195.00  *+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++                 000000
+0196.00 P Add_SOAPACTION  B                                                             000000
+0197.00 D Add_SOAPACTION  PI                                                            000000
+0198.00 D   Header                    1024A   varying                                   000000
+0199.00 D   UserData                      *   value                                     000000
+0200.00  /free                                                                          000000
+0201.00   //  Header = 'SOAPAction: '                                                   090916
+0202.00   //         + '"http://sap.com/xi/WebService/soap1.1"'                         090916
+0203.00   //         + x'0d25';                                                         090916
+0204.00   Header = 'SOAPAction : '                                                      170120
+0205.00          + '"OssegWebServeraction/AAS400WS.Execute"'                            170331
+0206.00          + CRLF  ;                                                              170120
+0207.00  /end-free                                                                      090915
+0208.00 P                 E                                                             090915
+        ****************** Fin de datos ******************************************************
+
+
+
+
+
+ 
+                                                                                              
